@@ -37,6 +37,11 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          VITE_USER_DATA_KEY: userData
+          VITE_API_URL: https://dummyjson.com
+          VITE_ARTICLE_API_URL: https://hn.algolia.com/api/v1
+          VITE_PRODUCTS_API_URL: https://dummyjson.com
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
