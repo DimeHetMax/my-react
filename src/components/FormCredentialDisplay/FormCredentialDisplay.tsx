@@ -1,8 +1,8 @@
-import type { FetchLoginResponse } from "../../types/form";
+import type { AuthUser } from "../../types/form";
 import css from "./FormCredentialDisplay.module.css";
 
 interface FormCredentialDisplayProp {
-  data: FetchLoginResponse;
+  data: AuthUser;
 }
 
 const FormCredentialDisplay = ({ data }: FormCredentialDisplayProp) => {
@@ -38,20 +38,6 @@ const FormCredentialDisplay = ({ data }: FormCredentialDisplayProp) => {
           <dd>{data.gender}</dd>
         </div>
       </dl>
-
-      <div className={css.tokens}>
-        <h3 className={css.tokensTitle}>Session credentials</h3>
-
-        <div className={css.tokenRow}>
-          <span>Access token</span>
-          <code title={data.accessToken}>{data.accessToken}</code>
-        </div>
-
-        <div className={css.tokenRow}>
-          <span>Refresh token</span>
-          <code title={data.refreshToken}>{data.refreshToken}</code>
-        </div>
-      </div>
     </article>
   );
 };

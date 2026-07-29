@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 // import Img from "../Img";
 // import Title from "../Title";
 // import Button from "../Button/Button";
@@ -25,8 +25,48 @@ import Loader from "../Loader/Loader";
 import Form from "../Form/Form";
 import FormCredentialDisplay from "../FormCredentialDisplay/FormCredentialDisplay";
 import Logout from "../Logout/Logout";
-import type { LoginCredentials, FetchLoginResponse } from "../../types/form";
+import type { AuthUser, LoginCredentials } from "../../types/form";
 import fetchLogin from "../../services/loginServices";
+import fetchAuth from "../../services/authService";
+
+const USER_DATA_KEY = import.meta.env.VITE_USER_DATA_KEY || "userData";
+
+const readAccessTokenCookie = (): string | null => {
+  const token = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith("accessToken="))
+    ?.split("=")[1];
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(token);
+  } catch (error) {
+    console.error("Could not read accessToken cookie:", error);
+    return null;
+  }
+};
+
+const toAuthUser = ({
+  email,
+  firstName,
+  lastName,
+  gender,
+  id,
+  image,
+  username,
+}: AuthUser): AuthUser => ({
+  email,
+  firstName,
+  lastName,
+  gender,
+  id,
+  image,
+  username,
+});
+
 // const getStoredArticles = (): Article[] => {
 //   try {
 //     const storedData = JSON.parse(
@@ -60,21 +100,29 @@ function App() {
   // const [products, setProducts] = useState<Product[]>([]);
   // const [isProductLoading, setIsProductLoading] = useState(false);
   // const [productError, setProductError] = useState("");
-const USER_DATA_KEY = import.meta.env.VITE_USER_DATA_KEY;
-  const [userData, setUserData] = useState<FetchLoginResponse | null>(() => {
+  const [accessToken, setAccessToken] = useState<string | null>(
+    readAccessTokenCookie,
+  );
+  const [userData, setUserData] = useState<AuthUser | null>(() => {
+    if (!accessToken) {
+      return null;
+    }
+
     const savedUser = localStorage.getItem(USER_DATA_KEY);
+
     if (!savedUser) {
       return null;
     }
+
     try {
-      return JSON.parse(savedUser) as FetchLoginResponse;
+      return toAuthUser(JSON.parse(savedUser) as AuthUser);
     } catch (error) {
       console.error("Could not read userData:", error);
       return null;
     }
   });
   const [userDataError, setUserDataError] = useState<string>("");
-  const [isUserDataLoading, setSUserDataLoading] = useState<boolean>(false);
+  const [isUserDataLoading, setIsUserDataLoading] = useState<boolean>(false);
   // useEffect(() => {
   //   localStorage.setItem("data", JSON.stringify(data));
   // }, [data]);
@@ -116,27 +164,56 @@ const USER_DATA_KEY = import.meta.env.VITE_USER_DATA_KEY;
   //     setIsProductLoading(false);
   //   }
   // };
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    const checkAuth = async () => {
+      try {
+        const authenticatedUser = await fetchAuth(accessToken);
+        const user = toAuthUser(authenticatedUser);
+
+        setUserData(user);
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+      } catch (error) {
+        console.error("Could not restore the session:", error);
+        localStorage.removeItem(USER_DATA_KEY);
+        document.cookie = "accessToken=; Path=/; Max-Age=0; SameSite=Lax";
+        setAccessToken(null);
+        setUserData(null);
+        setUserDataError("Your session has expired. Please log in again.");
+      }
+    };
+
+    void checkAuth();
+  }, [accessToken]);
+
   const onSubmit = async (data: LoginCredentials) => {
-    console.log("Data from Form in APP", data);
     try {
-      setSUserDataLoading(true);
+      setIsUserDataLoading(true);
       setUserDataError("");
       const response = await fetchLogin(data);
-      setUserData({ ...response });
-      // setLocalStore("userData")
-      localStorage.setItem(USER_DATA_KEY, JSON.stringify({ ...response }));
+      const user = toAuthUser(response);
+
+      setUserData(user);
+      localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+      document.cookie = `accessToken=${encodeURIComponent(response.accessToken)}; Path=/; Max-Age=3600; SameSite=Lax`;
+      setAccessToken(response.accessToken);
     } catch (error) {
-      console.log(error);
+      console.error("Login failed:", error);
       setUserDataError(
         error instanceof Error ? error.message : "Error LoginFetch",
       );
     } finally {
-      setSUserDataLoading(false);
+      setIsUserDataLoading(false);
     }
   };
 
   const handleLogoutClick = () => {
     localStorage.removeItem(USER_DATA_KEY);
+    document.cookie = "accessToken=; Path=/; Max-Age=0; SameSite=Lax";
+    setAccessToken(null);
     setUserData(null);
     setUserDataError("");
   };
