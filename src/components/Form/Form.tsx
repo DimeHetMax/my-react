@@ -1,10 +1,11 @@
 import css from "./Form.module.css";
 import type{ LoginCredentials } from "../../types/form";
-
+import { useId } from "react";
 interface FormProp {
     onSubmit: (data: LoginCredentials)=>Promise<void>;
 }
 const Form = ({onSubmit}:FormProp) => {
+  const id = useId()
   const handleForm = async(formData: FormData) => {
     const data = {
       username: formData.get("username") as string,
@@ -15,7 +16,7 @@ const Form = ({onSubmit}:FormProp) => {
 
   return (
     <form className={css.form} action={handleForm}>
-      <label className={css.label} htmlFor="username">
+      <label className={css.label} htmlFor={`${id}-username`}>
         Username
       </label>
       <input
@@ -26,7 +27,7 @@ const Form = ({onSubmit}:FormProp) => {
         placeholder="Enter your username"
         required
       />
-      <label className={css.label} htmlFor="password">
+      <label className={css.label} htmlFor={`${id}-password`}>
         password
       </label>
       <input
